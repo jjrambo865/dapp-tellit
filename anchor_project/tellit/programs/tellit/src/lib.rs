@@ -1,6 +1,24 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash;
 
 declare_id!("BnT3T9mtNjXBEELoggRSQYN5gJhAb3Rvut3sH8mrMP6J");
+
+
+
+// Helper function to create content hash for PDA seeds
+// Use a more efficient approach to minimize stack usage
+fn create_content_hash(title: &str, content: &str) -> [u8; 32] {
+    // Process in chunks to avoid large stack allocations
+    let mut hasher = hash::Hasher::default();
+    
+    // Hash title
+    hasher.hash(title.as_bytes());
+    hasher.hash(b":");
+    // Hash content
+    hasher.hash(content.as_bytes());
+    
+    hasher.result().to_bytes()
+}
 
 #[program]
 pub mod tellit {
@@ -24,9 +42,10 @@ pub mod tellit {
             TellitError::CannotSendToSelf
         );
         require!(title.len() <= 50, TellitError::TitleTooLong);
-        require!(content.len() <= 500, TellitError::ContentTooLong);
+        require!(content.len() <= 300, TellitError::ContentTooLong);
         require!(ctx.accounts.note.author == Pubkey::default(), TellitError::NoteAlreadyExists);
 
+        // Use references to avoid moving large strings
         let note = &mut ctx.accounts.note;
         let config = &mut ctx.accounts.config;
         let current_time = Clock::get()?.unix_timestamp;
@@ -55,7 +74,7 @@ pub mod tellit {
             TellitError::NotAuthorized
         );
         require!(new_title.len() <= 50, TellitError::TitleTooLong);
-        require!(new_content.len() <= 500, TellitError::ContentTooLong);
+        require!(new_content.len() <= 300, TellitError::ContentTooLong);
 
         let note = &mut ctx.accounts.note;
         note.title = new_title;
@@ -72,6 +91,7 @@ pub mod tellit {
         let reaction = &mut ctx.accounts.reaction;
         let reactor = ctx.accounts.reactor.key();
 
+        // Add new reaction
         match reaction_type {
             ReactionType::Like => {
                 note.likes = note.likes.saturating_add(1);
@@ -85,9 +105,74 @@ pub mod tellit {
                 return Err(TellitError::InvalidReactionType.into());
             }
         }
+        
         reaction.reactor = reactor;
         reaction.note = note.key();
         reaction.bump = ctx.bumps.reaction;
+        Ok(())
+    }
+
+    pub fn remove_reaction(
+        ctx: Context<RemoveReaction>,
+    ) -> Result<()> {
+        let note = &mut ctx.accounts.note;
+        let reaction = &mut ctx.accounts.reaction;
+
+        // Remove existing reaction
+        match reaction.reaction_type {
+            ReactionType::Like => {
+                require!(note.likes > 0, TellitError::InvalidReactionCount);
+                note.likes = note.likes.saturating_sub(1);
+            }
+            ReactionType::Dislike => {
+                require!(note.dislikes > 0, TellitError::InvalidReactionCount);
+                note.dislikes = note.dislikes.saturating_sub(1);
+            }
+            ReactionType::None => {
+                return Err(TellitError::InvalidReactionType.into());
+            }
+        }
+
+        // Set reaction to none
+        reaction.reaction_type = ReactionType::None;
+        Ok(())
+    }
+
+    pub fn change_reaction(
+        ctx: Context<ChangeReaction>,
+        new_reaction_type: ReactionType,
+    ) -> Result<()> {
+        let note = &mut ctx.accounts.note;
+        let reaction = &mut ctx.accounts.reaction;
+
+        // Remove existing reaction first
+        match reaction.reaction_type {
+            ReactionType::Like => {
+                require!(note.likes > 0, TellitError::InvalidReactionCount);
+                note.likes = note.likes.saturating_sub(1);
+            }
+            ReactionType::Dislike => {
+                require!(note.dislikes > 0, TellitError::InvalidReactionCount);
+                note.dislikes = note.dislikes.saturating_sub(1);
+            }
+            ReactionType::None => {} // No existing reaction to remove
+        }
+
+        // Add new reaction
+        match new_reaction_type {
+            ReactionType::Like => {
+                note.likes = note.likes.saturating_add(1);
+                reaction.reaction_type = ReactionType::Like;
+            }
+            ReactionType::Dislike => {
+                note.dislikes = note.dislikes.saturating_add(1);
+                reaction.reaction_type = ReactionType::Dislike;
+            }
+            ReactionType::None => {
+                reaction.reaction_type = ReactionType::None;
+            }
+        }
+
         Ok(())
     }
 
@@ -116,8 +201,9 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(title: String, content: String)]
 pub struct SendNote<'info> {
-    #[account(init, payer = author, space = 8 + 32 + 32 + 4 + 50 + 4 + 500 + 8 + 8 + 8 + 8 + 1, seeds = [b"note", author.key().as_ref(), receiver.key().as_ref()], bump)]
+    #[account(init, payer = author, space = 8 + 32 + 32 + 4 + 50 + 4 + 300 + 8 + 8 + 8 + 8 + 1, seeds = [b"note", author.key().as_ref(), receiver.key().as_ref(), &create_content_hash(&title, &content)], bump)]
     pub note: Account<'info, Note>,
     #[account(mut, seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, Config>,
@@ -129,15 +215,16 @@ pub struct SendNote<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(new_title: String, new_content: String)]
 pub struct EditNote<'info> {
-    #[account(mut, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref()], bump = note.bump, constraint = note.author == author.key() @ TellitError::NotAuthorized)]
+    #[account(mut, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &create_content_hash(&note.title, &note.content)], bump = note.bump, constraint = note.author == author.key() @ TellitError::NotAuthorized)]
     pub note: Account<'info, Note>,
     pub author: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ReactToNote<'info> {
-    #[account(mut, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref()], bump = note.bump)]
+    #[account(mut, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &create_content_hash(&note.title, &note.content)], bump = note.bump)]
     pub note: Account<'info, Note>,
     #[account(init, payer = reactor, space = 8 + 32 + 32 + 1 + 1, seeds = [b"reaction", note.key().as_ref(), reactor.key().as_ref()], bump)]
     pub reaction: Account<'info, Reaction>,
@@ -147,8 +234,28 @@ pub struct ReactToNote<'info> {
 }
 
 #[derive(Accounts)]
+pub struct RemoveReaction<'info> {
+    #[account(mut, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &create_content_hash(&note.title, &note.content)], bump = note.bump)]
+    pub note: Account<'info, Note>,
+    #[account(mut, seeds = [b"reaction", note.key().as_ref(), reactor.key().as_ref()], bump = reaction.bump, constraint = reaction.reactor == reactor.key() @ TellitError::NotAuthorized)]
+    pub reaction: Account<'info, Reaction>,
+    #[account(mut)]
+    pub reactor: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ChangeReaction<'info> {
+    #[account(mut, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &create_content_hash(&note.title, &note.content)], bump = note.bump)]
+    pub note: Account<'info, Note>,
+    #[account(mut, seeds = [b"reaction", note.key().as_ref(), reactor.key().as_ref()], bump = reaction.bump, constraint = reaction.reactor == reactor.key() @ TellitError::NotAuthorized)]
+    pub reaction: Account<'info, Reaction>,
+    #[account(mut)]
+    pub reactor: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct DeleteNote<'info> {
-    #[account(mut, close = deleter, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref()], bump = note.bump)]
+    #[account(mut, close = deleter, seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &create_content_hash(&note.title, &note.content)], bump = note.bump)]
     pub note: Account<'info, Note>,
     #[account(mut, seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, Config>,
@@ -195,9 +302,9 @@ pub enum ReactionType {
 pub enum TellitError {
     #[msg("Cannot send note to yourself")]
     CannotSendToSelf,
-    #[msg("Title is too long (max 100 characters)")]
+    #[msg("Title is too long (max 50 characters)")]
     TitleTooLong,
-    #[msg("Content is too long (max 1000 characters)")]
+    #[msg("Content is too long (max 300 characters)")]
     ContentTooLong,
     #[msg("Note already exists for this author-receiver pair")]
     NoteAlreadyExists,
@@ -207,4 +314,6 @@ pub enum TellitError {
     InvalidNotePDA,
     #[msg("Invalid reaction type")]
     InvalidReactionType,
+    #[msg("Invalid reaction count")]
+    InvalidReactionCount,
 }

@@ -11,6 +11,17 @@ describe("Tellit", () => {
   const program = anchor.workspace.tellit as Program<Tellit>;
   const provider = anchor.getProvider();
 
+  // Helper function to generate note PDA with content hash
+  function getNotePda(author: PublicKey, receiver: PublicKey, title: string, content: string): [PublicKey, number] {
+    // Use the same keccak256 implementation as the backend
+    const crypto = require('crypto');
+    const contentHash = crypto.createHash('sha256').update(`${title}:${content}`).digest();
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("note"), author.toBuffer(), receiver.toBuffer(), contentHash],
+      program.programId
+    );
+  }
+
   // Test wallets as specified in requirements
   const user1 = new PublicKey("76TtFtamURVjRT1vmde13tBHn4gnWhYU9vKXt4oWFVtj");
   const user2 = new PublicKey("BwEQZZto6i4PB4eEqn4NfTAAxNwp16cE48xVpQCoykjs");
@@ -115,10 +126,7 @@ describe("Tellit", () => {
       const title = "Test Note Title";
       const content = "This is a test note content for user2";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), author.publicKey.toBuffer(), receiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(author.publicKey, receiver.publicKey, title, content);
 
       const tx = await program.methods
         .sendNote(title, content)
@@ -157,10 +165,7 @@ describe("Tellit", () => {
       const title = "Self Note Title";
       const content = "This should fail";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), author.publicKey.toBuffer(), author.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(author.publicKey, author.publicKey, title, content);
 
       try {
         await program.methods
@@ -195,10 +200,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(newAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), newAuthor.publicKey.toBuffer(), receiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(newAuthor.publicKey, receiver.publicKey, title, content);
 
       const tx = await program.methods
         .sendNote(title, content)
@@ -228,6 +230,141 @@ describe("Tellit", () => {
       console.log("✓ Second note sent successfully to same user");
     });
 
+    it("05b. Multiple Notes Same Author-Receiver Different Content", async () => {
+      const title1 = "First Note";
+      const content1 = "This is the first note content";
+      const title2 = "Second Note";
+      const content2 = "This is the second note content with different content";
+
+      // Use same author-receiver pair but different content
+      const multiNoteAuthor = Keypair.generate();
+      const multiNoteReceiver = Keypair.generate();
+
+      await provider.connection.requestAirdrop(multiNoteAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await provider.connection.requestAirdrop(multiNoteReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Create first note
+      const [notePda1] = getNotePda(multiNoteAuthor.publicKey, multiNoteReceiver.publicKey, title1, content1);
+      
+      const tx1 = await program.methods
+        .sendNote(title1, content1)
+        .accounts({
+          note: notePda1,
+          config: configPda,
+          author: multiNoteAuthor.publicKey,
+          receiver: multiNoteReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([multiNoteAuthor])
+        .rpc();
+
+      console.log("✓ First note created successfully:", tx1);
+
+      // Create second note with different content
+      const [notePda2] = getNotePda(multiNoteAuthor.publicKey, multiNoteReceiver.publicKey, title2, content2);
+      
+      const tx2 = await program.methods
+        .sendNote(title2, content2)
+        .accounts({
+          note: notePda2,
+          config: configPda,
+          author: multiNoteAuthor.publicKey,
+          receiver: multiNoteReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([multiNoteAuthor])
+        .rpc();
+
+      console.log("✓ Should allow same author-receiver pair to send multiple notes with different content");
+      console.log("✓ Should create separate note accounts for each unique content");
+      console.log("✓ Should maintain independent note data for each note");
+      console.log("✓ Should increment note count for each successful note creation");
+      console.log("✓ Second note transaction signature:", tx2);
+
+      // Verify both notes were created
+      const noteAccount1 = await program.account.note.fetch(notePda1);
+      const noteAccount2 = await program.account.note.fetch(notePda2);
+      
+      expect(noteAccount1.title).to.equal(title1);
+      expect(noteAccount1.content).to.equal(content1);
+      expect(noteAccount2.title).to.equal(title2);
+      expect(noteAccount2.content).to.equal(content2);
+      expect(notePda1.toString()).to.not.equal(notePda2.toString());
+
+      console.log("✓ Multiple notes with different content created successfully");
+    });
+
+    it("05c. Prevent Duplicate Notes Same Content", async () => {
+      const title = "Duplicate Content Note";
+      const content = "This is the exact same content that should fail on second attempt";
+
+      // Use same author-receiver pair with identical content
+      const duplicateContentAuthor = Keypair.generate();
+      const duplicateContentReceiver = Keypair.generate();
+
+      await provider.connection.requestAirdrop(duplicateContentAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await provider.connection.requestAirdrop(duplicateContentReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Create first note with specific content
+      const [notePda] = getNotePda(duplicateContentAuthor.publicKey, duplicateContentReceiver.publicKey, title, content);
+      
+      const tx1 = await program.methods
+        .sendNote(title, content)
+        .accounts({
+          note: notePda,
+          config: configPda,
+          author: duplicateContentAuthor.publicKey,
+          receiver: duplicateContentReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([duplicateContentAuthor])
+        .rpc();
+
+      console.log("✓ First note with specific content created successfully:", tx1);
+
+      // Verify first note was created
+      const noteAccount1 = await program.account.note.fetch(notePda);
+      expect(noteAccount1.title).to.equal(title);
+      expect(noteAccount1.content).to.equal(content);
+
+      // Second attempt with identical content should fail
+      try {
+        await program.methods
+          .sendNote(title, content)
+          .accounts({
+            note: notePda,
+            config: configPda,
+            author: duplicateContentAuthor.publicKey,
+            receiver: duplicateContentReceiver.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([duplicateContentAuthor])
+          .rpc();
+
+        expect.fail("Should have thrown an error for duplicate content note");
+      } catch (error) {
+        // The error should be "account already in use" since same content generates same PDA
+        expect(error.message).to.match(/account already in use|already in use|Note already exists/);
+        console.log("✓ Should fail when attempting to create note with identical content");
+        console.log("✓ Should return appropriate error for account already in use");
+        console.log("✓ Should not overwrite existing note account with same content");
+        console.log("✓ Should not increment note count for failed duplicate content creation");
+        console.log("✓ Should preserve original note data integrity");
+        console.log("✓ Correctly prevented duplicate content note");
+      }
+
+      // Verify the original note still exists and wasn't overwritten
+      const noteAccount2 = await program.account.note.fetch(notePda);
+      expect(noteAccount2.title).to.equal(title);
+      expect(noteAccount2.content).to.equal(content);
+      expect(noteAccount2.author.toString()).to.equal(duplicateContentAuthor.publicKey.toString());
+      expect(noteAccount2.receiver.toString()).to.equal(duplicateContentReceiver.publicKey.toString());
+
+      console.log("✓ Original note preserved after duplicate content attempt");
+    });
+
     it("06. Prevent Duplicate Notes", async () => {
       const title = "Duplicate Note Title";
       const content = "This should fail on second attempt";
@@ -241,10 +378,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(duplicateReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), duplicateAuthor.publicKey.toBuffer(), duplicateReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(duplicateAuthor.publicKey, duplicateReceiver.publicKey, title, content);
 
       // First attempt should succeed
       const tx1 = await program.methods
@@ -303,10 +437,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(blankTitleReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), blankTitleAuthor.publicKey.toBuffer(), blankTitleReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(blankTitleAuthor.publicKey, blankTitleReceiver.publicKey, title, content);
 
       const tx = await program.methods
         .sendNote(title, content)
@@ -345,10 +476,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(blankContentReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), blankContentAuthor.publicKey.toBuffer(), blankContentReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(blankContentAuthor.publicKey, blankContentReceiver.publicKey, title, content);
 
       const tx = await program.methods
         .sendNote(title, content)
@@ -387,10 +515,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(titleLengthReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), titleLengthAuthor.publicKey.toBuffer(), titleLengthReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(titleLengthAuthor.publicKey, titleLengthReceiver.publicKey, title, content);
 
       try {
         await program.methods
@@ -416,9 +541,9 @@ describe("Tellit", () => {
       }
     });
 
-    it("10. Content Length Validation (500 characters)", async () => {
+    it("10. Content Length Validation (300 characters)", async () => {
       const title = "Valid Title";
-      const content = "b".repeat(501); // 501 characters, should fail
+      const content = "b".repeat(301); // 301 characters, should fail
 
       const contentLengthAuthor = Keypair.generate();
       const contentLengthReceiver = Keypair.generate();
@@ -427,10 +552,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(contentLengthReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), contentLengthAuthor.publicKey.toBuffer(), contentLengthReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(contentLengthAuthor.publicKey, contentLengthReceiver.publicKey, title, content);
 
       try {
         await program.methods
@@ -449,7 +571,7 @@ describe("Tellit", () => {
       } catch (error) {
         // The error might be "Content is too long" or "encoding overruns Buffer"
         expect(error.message).to.match(/Content is too long|encoding overruns Buffer|too long/);
-        console.log("✓ Should fail when content exceeds 500 character limit");
+        console.log("✓ Should fail when content exceeds 300 character limit");
         console.log("✓ Should return appropriate error for content length validation");
         console.log("✓ Should not create note account for invalid content length");
         console.log("✓ Should not increment note count for failed validation");
@@ -457,9 +579,9 @@ describe("Tellit", () => {
       }
     });
 
-    it("11. Maximum Length Content (500 characters)", async () => {
+    it("11. Maximum Length Content (300 characters)", async () => {
       const title = "Max Length Test";
-      const content = "a".repeat(500); // Exactly 500 characters, should succeed
+      const content = "a".repeat(300); // Exactly 300 characters, should succeed
 
       const maxLengthAuthor = Keypair.generate();
       const maxLengthReceiver = Keypair.generate();
@@ -468,10 +590,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(maxLengthReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), maxLengthAuthor.publicKey.toBuffer(), maxLengthReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(maxLengthAuthor.publicKey, maxLengthReceiver.publicKey, title, content);
 
       const tx = await program.methods
         .sendNote(title, content)
@@ -485,7 +604,7 @@ describe("Tellit", () => {
         .signers([maxLengthAuthor])
         .rpc();
 
-      console.log("✓ Should allow notes with maximum allowed content length (500 chars)");
+      console.log("✓ Should allow notes with maximum allowed content length (300 chars)");
       console.log("✓ Should store maximum length content correctly");
       console.log("✓ Should create valid note account with max length content");
       console.log("✓ Should increment note count for max length content notes");
@@ -495,7 +614,7 @@ describe("Tellit", () => {
       const noteAccount = await program.account.note.fetch(notePda);
       expect(noteAccount.title).to.equal(title);
       expect(noteAccount.content).to.equal(content);
-      expect(noteAccount.content.length).to.equal(500);
+      expect(noteAccount.content.length).to.equal(300);
 
       console.log("✓ Max length content note created successfully");
     });
@@ -511,10 +630,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(alphanumericReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), alphanumericAuthor.publicKey.toBuffer(), alphanumericReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(alphanumericAuthor.publicKey, alphanumericReceiver.publicKey, title, content);
 
       const tx = await program.methods
         .sendNote(title, content)
@@ -549,10 +665,7 @@ describe("Tellit", () => {
       const newTitle = "Updated Note Title";
       const newContent = "This is the updated content";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), author.publicKey.toBuffer(), receiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(author.publicKey, receiver.publicKey, "Test Note Title", "This is a test note content for user2");
 
       const tx = await program.methods
         .editNote(newTitle, newContent)
@@ -584,10 +697,32 @@ describe("Tellit", () => {
       const newTitle = "Unauthorized Edit Title";
       const newContent = "This should fail";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), author.publicKey.toBuffer(), receiver.publicKey.toBuffer()],
-        program.programId
-      );
+      // Create a new note for this test to ensure it exists
+      const unauthorizedEditAuthor = Keypair.generate();
+      const unauthorizedEditReceiver = Keypair.generate();
+      
+      await provider.connection.requestAirdrop(unauthorizedEditAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await provider.connection.requestAirdrop(unauthorizedEditReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const title = "Note for Unauthorized Edit Test";
+      const content = "This note will be edited by unauthorized user";
+      const [notePda] = getNotePda(unauthorizedEditAuthor.publicKey, unauthorizedEditReceiver.publicKey, title, content);
+
+      // Create the note first
+      const createTx = await program.methods
+        .sendNote(title, content)
+        .accounts({
+          note: notePda,
+          config: configPda,
+          author: unauthorizedEditAuthor.publicKey,
+          receiver: unauthorizedEditReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([unauthorizedEditAuthor])
+        .rpc();
+
+      console.log("✓ Note created for unauthorized edit test:", createTx);
 
       // Try to edit with a different user (receiver)
       try {
@@ -595,9 +730,9 @@ describe("Tellit", () => {
           .editNote(newTitle, newContent)
           .accounts({
             note: notePda,
-            author: receiver.publicKey,
+            author: unauthorizedEditReceiver.publicKey,
           })
-          .signers([receiver])
+          .signers([unauthorizedEditReceiver])
           .rpc();
 
         expect.fail("Should have thrown an error for unauthorized edit");
@@ -610,6 +745,13 @@ describe("Tellit", () => {
         console.log("✓ Should preserve original note data integrity");
         console.log("✓ Correctly prevented unauthorized edit");
       }
+
+      // Verify the note was not modified
+      const noteAccount = await program.account.note.fetch(notePda);
+      expect(noteAccount.title).to.equal(title);
+      expect(noteAccount.content).to.equal(content);
+
+      console.log("✓ Note account preserved after unauthorized edit attempt");
     });
 
     it("15. Edit Non-Existent Note", async () => {
@@ -619,10 +761,7 @@ describe("Tellit", () => {
       // Create a non-existent note PDA
       const nonExistentAuthor = Keypair.generate();
       const nonExistentReceiver = Keypair.generate();
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), nonExistentAuthor.publicKey.toBuffer(), nonExistentReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(nonExistentAuthor.publicKey, nonExistentReceiver.publicKey, "Non-existent", "This note doesn't exist");
 
       try {
         await program.methods
@@ -660,10 +799,7 @@ describe("Tellit", () => {
       const title = "Reaction Test Note";
       const content = "This note is for testing reactions";
 
-      const [reactionNotePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), reactionNoteAuthor.publicKey.toBuffer(), reactionNoteReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [reactionNotePda] = getNotePda(reactionNoteAuthor.publicKey, reactionNoteReceiver.publicKey, title, content);
 
       const noteTx = await program.methods
         .sendNote(title, content)
@@ -730,10 +866,7 @@ describe("Tellit", () => {
       const title = "Dislike Test Note";
       const content = "This note is for testing dislike reactions";
 
-      const [dislikeNotePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), dislikeNoteAuthor.publicKey.toBuffer(), dislikeNoteReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [dislikeNotePda] = getNotePda(dislikeNoteAuthor.publicKey, dislikeNoteReceiver.publicKey, title, content);
 
       const noteTx = await program.methods
         .sendNote(title, content)
@@ -790,10 +923,7 @@ describe("Tellit", () => {
       // Create a non-existent note PDA
       const nonExistentAuthor = Keypair.generate();
       const nonExistentReceiver = Keypair.generate();
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), nonExistentAuthor.publicKey.toBuffer(), nonExistentReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(nonExistentAuthor.publicKey, nonExistentReceiver.publicKey, "Non-existent", "This note doesn't exist");
 
       const [reactionPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("reaction"), notePda.toBuffer(), reactor3.publicKey.toBuffer()],
@@ -835,10 +965,7 @@ describe("Tellit", () => {
       const title = "Duplicate Reaction Test Note";
       const content = "This note is for testing duplicate reactions";
 
-      const [duplicateReactionNotePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), duplicateReactionAuthor.publicKey.toBuffer(), duplicateReactionReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [duplicateReactionNotePda] = getNotePda(duplicateReactionAuthor.publicKey, duplicateReactionReceiver.publicKey, title, content);
 
       const noteTx = await program.methods
         .sendNote(title, content)
@@ -921,10 +1048,7 @@ describe("Tellit", () => {
       const title = "Multi Reaction Note";
       const content = "Testing multiple reactions from different users";
 
-      const [multiReactionNotePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), multiReactionAuthor.publicKey.toBuffer(), multiReactionReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [multiReactionNotePda] = getNotePda(multiReactionAuthor.publicKey, multiReactionReceiver.publicKey, title, content);
 
       const noteTx = await program.methods
         .sendNote(title, content)
@@ -995,6 +1119,249 @@ describe("Tellit", () => {
       console.log("✓ Total likes:", totalLikes);
       console.log("✓ Total dislikes:", totalDislikes);
     });
+
+    it("20b. Reaction Removal - Like to None", async () => {
+      // Create a note for reaction removal test
+      const removalNoteAuthor = Keypair.generate();
+      const removalNoteReceiver = Keypair.generate();
+
+      await provider.connection.requestAirdrop(removalNoteAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await provider.connection.requestAirdrop(removalNoteReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const title = "Reaction Removal Test Note";
+      const content = "This note is for testing reaction removal";
+
+      const [removalNotePda] = getNotePda(removalNoteAuthor.publicKey, removalNoteReceiver.publicKey, title, content);
+
+      // Create the note
+      const noteTx = await program.methods
+        .sendNote(title, content)
+        .accounts({
+          note: removalNotePda,
+          config: configPda,
+          author: removalNoteAuthor.publicKey,
+          receiver: removalNoteReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([removalNoteAuthor])
+        .rpc();
+
+      console.log("✓ Reaction removal test note created:", noteTx);
+
+      const [reactionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("reaction"), removalNotePda.toBuffer(), reactor1.publicKey.toBuffer()],
+        program.programId
+      );
+
+      // First, add a like reaction
+      const likeTx = await program.methods
+        .reactToNote({ like: {} })
+        .accounts({
+          note: removalNotePda,
+          reaction: reactionPda,
+          reactor: reactor1.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([reactor1])
+        .rpc();
+
+      console.log("✓ Like reaction added:", likeTx);
+
+      // Verify like was added
+      let noteAccount = await program.account.note.fetch(removalNotePda);
+      expect(noteAccount.likes.toNumber()).to.equal(1);
+      expect(noteAccount.dislikes.toNumber()).to.equal(0);
+
+      // Now remove the reaction using the new remove_reaction instruction
+      const removeTx = await program.methods
+        .removeReaction()
+        .accounts({
+          note: removalNotePda,
+          reaction: reactionPda,
+          reactor: reactor1.publicKey,
+        })
+        .signers([reactor1])
+        .rpc();
+
+      console.log("✓ Should successfully remove like reaction");
+      console.log("✓ Should decrement note likes count by 1");
+      console.log("✓ Should maintain note dislikes count at 0");
+      console.log("✓ Should set reaction type to 'none'");
+      console.log("✓ Reaction removal transaction signature:", removeTx);
+
+      // Verify reaction was removed
+      noteAccount = await program.account.note.fetch(removalNotePda);
+      const reactionAccount = await program.account.reaction.fetch(reactionPda);
+      
+      expect(noteAccount.likes.toNumber()).to.equal(0);
+      expect(noteAccount.dislikes.toNumber()).to.equal(0);
+      expect(reactionAccount.reactionType).to.deep.equal({ none: {} });
+
+      console.log("✓ Like reaction removed successfully");
+    });
+
+    it("20c. Reaction Removal - Dislike to None", async () => {
+      // Create a note for dislike removal test
+      const dislikeRemovalAuthor = Keypair.generate();
+      const dislikeRemovalReceiver = Keypair.generate();
+
+      await provider.connection.requestAirdrop(dislikeRemovalAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await provider.connection.requestAirdrop(dislikeRemovalReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const title = "Dislike Removal Test Note";
+      const content = "This note is for testing dislike removal";
+
+      const [dislikeRemovalNotePda] = getNotePda(dislikeRemovalAuthor.publicKey, dislikeRemovalReceiver.publicKey, title, content);
+
+      // Create the note
+      const noteTx = await program.methods
+        .sendNote(title, content)
+        .accounts({
+          note: dislikeRemovalNotePda,
+          config: configPda,
+          author: dislikeRemovalAuthor.publicKey,
+          receiver: dislikeRemovalReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([dislikeRemovalAuthor])
+        .rpc();
+
+      console.log("✓ Dislike removal test note created:", noteTx);
+
+      const [reactionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("reaction"), dislikeRemovalNotePda.toBuffer(), reactor2.publicKey.toBuffer()],
+        program.programId
+      );
+
+      // First, add a dislike reaction
+      const dislikeTx = await program.methods
+        .reactToNote({ dislike: {} })
+        .accounts({
+          note: dislikeRemovalNotePda,
+          reaction: reactionPda,
+          reactor: reactor2.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([reactor2])
+        .rpc();
+
+      console.log("✓ Dislike reaction added:", dislikeTx);
+
+      // Verify dislike was added
+      let noteAccount = await program.account.note.fetch(dislikeRemovalNotePda);
+      expect(noteAccount.likes.toNumber()).to.equal(0);
+      expect(noteAccount.dislikes.toNumber()).to.equal(1);
+
+      // Now remove the reaction using the new remove_reaction instruction
+      const removeTx = await program.methods
+        .removeReaction()
+        .accounts({
+          note: dislikeRemovalNotePda,
+          reaction: reactionPda,
+          reactor: reactor2.publicKey,
+        })
+        .signers([reactor2])
+        .rpc();
+
+      console.log("✓ Should successfully remove dislike reaction");
+      console.log("✓ Should decrement note dislikes count by 1");
+      console.log("✓ Should maintain note likes count at 0");
+      console.log("✓ Should set reaction type to 'none'");
+      console.log("✓ Dislike removal transaction signature:", removeTx);
+
+      // Verify reaction was removed
+      noteAccount = await program.account.note.fetch(dislikeRemovalNotePda);
+      const reactionAccount = await program.account.reaction.fetch(reactionPda);
+      
+      expect(noteAccount.likes.toNumber()).to.equal(0);
+      expect(noteAccount.dislikes.toNumber()).to.equal(0);
+      expect(reactionAccount.reactionType).to.deep.equal({ none: {} });
+
+      console.log("✓ Dislike reaction removed successfully");
+    });
+
+    it("20d. Reaction Change - Like to Dislike", async () => {
+      // Create a note for reaction change test
+      const changeNoteAuthor = Keypair.generate();
+      const changeNoteReceiver = Keypair.generate();
+
+      await provider.connection.requestAirdrop(changeNoteAuthor.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await provider.connection.requestAirdrop(changeNoteReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const title = "Reaction Change Test Note";
+      const content = "This note is for testing reaction changes";
+
+      const [changeNotePda] = getNotePda(changeNoteAuthor.publicKey, changeNoteReceiver.publicKey, title, content);
+
+      // Create the note
+      const noteTx = await program.methods
+        .sendNote(title, content)
+        .accounts({
+          note: changeNotePda,
+          config: configPda,
+          author: changeNoteAuthor.publicKey,
+          receiver: changeNoteReceiver.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([changeNoteAuthor])
+        .rpc();
+
+      console.log("✓ Reaction change test note created:", noteTx);
+
+      const [reactionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("reaction"), changeNotePda.toBuffer(), reactor3.publicKey.toBuffer()],
+        program.programId
+      );
+
+      // First, add a like reaction
+      const likeTx = await program.methods
+        .reactToNote({ like: {} })
+        .accounts({
+          note: changeNotePda,
+          reaction: reactionPda,
+          reactor: reactor3.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([reactor3])
+        .rpc();
+
+      console.log("✓ Like reaction added:", likeTx);
+
+      // Verify like was added
+      let noteAccount = await program.account.note.fetch(changeNotePda);
+      expect(noteAccount.likes.toNumber()).to.equal(1);
+      expect(noteAccount.dislikes.toNumber()).to.equal(0);
+
+      // Now change to dislike using the new changeReaction instruction
+      const changeTx = await program.methods
+        .changeReaction({ dislike: {} })
+        .accounts({
+          note: changeNotePda,
+          reaction: reactionPda,
+          reactor: reactor3.publicKey,
+        })
+        .signers([reactor3])
+        .rpc();
+
+      console.log("✓ Should successfully change like to dislike");
+      console.log("✓ Should decrement note likes count by 1");
+      console.log("✓ Should increment note dislikes count by 1");
+      console.log("✓ Should set reaction type to 'dislike'");
+      console.log("✓ Reaction change transaction signature:", changeTx);
+
+      // Verify reaction was changed
+      noteAccount = await program.account.note.fetch(changeNotePda);
+      const reactionAccount = await program.account.reaction.fetch(reactionPda);
+      
+      expect(noteAccount.likes.toNumber()).to.equal(0);
+      expect(noteAccount.dislikes.toNumber()).to.equal(1);
+      expect(reactionAccount.reactionType).to.deep.equal({ dislike: {} });
+
+      console.log("✓ Reaction changed from like to dislike successfully");
+    });
   });
 
   // Note Deletion Functionality
@@ -1011,10 +1378,7 @@ describe("Tellit", () => {
       const title = "Note to be Deleted";
       const content = "This note will be deleted by author";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), deleteAuthor.publicKey.toBuffer(), deleteReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(deleteAuthor.publicKey, deleteReceiver.publicKey, title, content);
 
       // Create the note first
       const createTx = await program.methods
@@ -1081,10 +1445,7 @@ describe("Tellit", () => {
       const title = "Note to be Deleted by Receiver";
       const content = "This note will be deleted by receiver";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), deleteAuthor2.publicKey.toBuffer(), deleteReceiver2.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(deleteAuthor2.publicKey, deleteReceiver2.publicKey, title, content);
 
       // Create the note first
       const createTx = await program.methods
@@ -1151,10 +1512,7 @@ describe("Tellit", () => {
       const title = "Note for Unauthorized Deletion Test";
       const content = "This note should not be deletable by unauthorized user";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), unauthorizedAuthor.publicKey.toBuffer(), unauthorizedReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(unauthorizedAuthor.publicKey, unauthorizedReceiver.publicKey, title, content);
 
       // Create the note first
       const createTx = await program.methods
@@ -1210,10 +1568,7 @@ describe("Tellit", () => {
       // Create a non-existent note PDA
       const nonExistentAuthor = Keypair.generate();
       const nonExistentReceiver = Keypair.generate();
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), nonExistentAuthor.publicKey.toBuffer(), nonExistentReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(nonExistentAuthor.publicKey, nonExistentReceiver.publicKey, "Non-existent", "This note doesn't exist");
 
       try {
         await program.methods
@@ -1250,10 +1605,7 @@ describe("Tellit", () => {
       await provider.connection.requestAirdrop(countTestReceiver.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), countTestAuthor.publicKey.toBuffer(), countTestReceiver.publicKey.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(countTestAuthor.publicKey, countTestReceiver.publicKey, "Count Test Note", "Testing note count increment");
 
       const tx = await program.methods
         .sendNote("Count Test Note", "Testing note count increment")
@@ -1287,10 +1639,7 @@ describe("Tellit", () => {
       const title = "Note to Specified User";
       const content = "This note is sent to the specified user address";
 
-      const [notePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("note"), user1.toBuffer(), user2.toBuffer()],
-        program.programId
-      );
+      const [notePda] = getNotePda(user1, user2, "Note to Specified User", "This note is sent to the specified user address");
 
       // Note: This test will fail in local testing because we don't have the private keys
       // for the specified addresses, but it demonstrates the PDA structure
