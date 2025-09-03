@@ -1,0 +1,173 @@
+.send-note-tab {
+  width: 100%;
+}
+
+.connect-wallet-prompt {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #888;
+}
+
+.connect-wallet-prompt p {
+  font-size: 1.125rem;
+  margin-bottom: 0;
+}
+
+.wallet-info-banner {
+  background: transparent;
+  border: 0.5px solid #2F2F2F;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.wallet-address,
+.wallet-balance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.wallet-address strong,
+.wallet-balance strong {
+  font-size: 0.875rem;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.address-code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  color: #4a90e2;
+  word-break: break-all;
+  background: transparent;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.balance-amount {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 1.125rem;
+  color: #28a745;
+  font-weight: 600;
+}
+
+.network-info-section {
+  background: rgba(40, 40, 40, 0.8);
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.network-info-section h3 {
+  color: #ccc;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.network-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.network-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #333;
+}
+
+.network-item:last-child {
+  border-bottom: none;
+}
+
+.network-label {
+  font-size: 0.875rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.network-value {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  color: #4a90e2;
+  word-break: break-all;
+  text-align: right;
+  max-width: 60%;
+}
+
+.send-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-help {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .connect-wallet-prompt {
+    padding: 2rem 1rem;
+  }
+  
+  .wallet-info-banner {
+    padding: 1rem;
+  }
+  
+  .banner-content {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .network-info-section {
+    padding: 1rem;
+  }
+  
+  .network-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .network-value {
+    text-align: left;
+    max-width: 100%;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

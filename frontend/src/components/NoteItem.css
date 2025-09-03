@@ -1,0 +1,243 @@
+.note-item {
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  display: flex;
+  gap: 1.5rem;
+  position: relative;
+}
+
+/* Timeline Date Section */
+.timeline-date-section {
+  min-width: 200px;
+  text-align: right;
+  padding-right: 1rem;
+  border-right: 2px solid #444;
+  position: relative;
+}
+
+.timeline-date-section::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  background: #666;
+  border-radius: 50%;
+  border: 2px solid #333;
+}
+
+.timeline-year {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+  line-height: 1.2;
+}
+
+.timeline-date {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: #cccccc;
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+.timeline-time {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 0.85rem;
+  color: #aaaaaa;
+  line-height: 1.2;
+}
+
+/* Note Content Section */
+.note-content-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-item:hover {
+  border-color: #666;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.note-title-section {
+  flex: 1;
+}
+
+.note-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.note-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #888;
+}
+
+.note-author {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: #4a90e2;
+}
+
+.note-date {
+  color: #666;
+}
+
+/* Edit functionality removed - keeping app simple */
+
+.note-content {
+  color: #ccc;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.note-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.reaction-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.reaction-button {
+  background: transparent;
+  border: 1px solid #555;
+  color: #888;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 60px;
+  justify-content: center;
+}
+
+.reaction-button:hover {
+  border-color: #666;
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.reaction-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reaction-button.liked {
+  border-color: #28a745;
+  color: #28a745;
+  background: rgba(40, 167, 69, 0.1);
+}
+
+.reaction-button.liked:hover {
+  background: rgba(40, 167, 69, 0.2);
+}
+
+.reaction-button.disliked {
+  border-color: #dc3545;
+  color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.reaction-button.disliked:hover {
+  background: rgba(220, 53, 69, 0.2);
+}
+
+.delete-button {
+  background: transparent;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.delete-button:hover {
+  background: rgba(220, 53, 69, 0.1);
+  border-color: #c82333;
+  color: #c82333;
+}
+
+.delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #888;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .note-item {
+    padding: 1rem;
+  }
+  
+  .note-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .note-title {
+    font-size: 1.125rem;
+  }
+  
+  .note-meta {
+    flex-direction: row;
+    gap: 1rem;
+  }
+  
+  .note-actions {
+    justify-content: flex-start;
+  }
+  
+  .reaction-button {
+    min-width: 50px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}
