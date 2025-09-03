@@ -1,0 +1,336 @@
+{
+  "address": "BnT3T9mtNjXBEELoggRSQYN5gJhAb3Rvut3sH8mrMP6J",
+  "metadata": {
+    "name": "tellit",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "send_note_by_content",
+      "discriminator": [
+        58,
+        3,
+        220,
+        251,
+        60,
+        54,
+        88,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "note",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "author"
+              },
+              {
+                "kind": "account",
+                "path": "receiver"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  110,
+                  99,
+                  104,
+                  111,
+                  114,
+                  95,
+                  108,
+                  97,
+                  110,
+                  103,
+                  32,
+                  58,
+                  58,
+                  32,
+                  115,
+                  111,
+                  108,
+                  97,
+                  110,
+                  97,
+                  95,
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  32,
+                  58,
+                  58,
+                  32,
+                  107,
+                  101,
+                  99,
+                  99,
+                  97,
+                  107,
+                  32,
+                  58,
+                  58,
+                  10,
+                  104,
+                  97,
+                  115,
+                  104,
+                  40,
+                  38,
+                  32,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  116,
+                  33,
+                  32,
+                  40,
+                  34,
+                  123,
+                  125,
+                  123,
+                  125,
+                  34,
+                  44,
+                  32,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101,
+                  44,
+                  32,
+                  99,
+                  111,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116,
+                  41
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "receiver"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Note",
+      "discriminator": [
+        203,
+        75,
+        252,
+        196,
+        81,
+        210,
+        122,
+        126
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "CannotSendToSelf",
+      "msg": "Cannot send note to yourself"
+    },
+    {
+      "code": 6001,
+      "name": "TitleTooLong",
+      "msg": "Title is too long (max 50 characters)"
+    },
+    {
+      "code": 6002,
+      "name": "ContentTooLong",
+      "msg": "Content is too long (max 300 characters)"
+    },
+    {
+      "code": 6003,
+      "name": "DuplicateMessage",
+      "msg": "Duplicate message - note already exists"
+    },
+    {
+      "code": 6004,
+      "name": "NotAuthorized",
+      "msg": "Not authorized to perform this action"
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "note_count",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Note",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "author",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiver",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "content",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}
