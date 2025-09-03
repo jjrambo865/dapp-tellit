@@ -15,7 +15,7 @@ tellit = "BnT3T9mtNjXBEELoggRSQYN5gJhAb3Rvut3sH8mrMP6J"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

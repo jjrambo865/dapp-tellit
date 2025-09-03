@@ -1,0 +1,959 @@
+{
+  "address": "BnT3T9mtNjXBEELoggRSQYN5gJhAb3Rvut3sH8mrMP6J",
+  "metadata": {
+    "name": "tellit",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "delete_note_by_content",
+      "discriminator": [
+        232,
+        74,
+        107,
+        175,
+        90,
+        129,
+        68,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "note",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "note.author",
+                "account": "Note"
+              },
+              {
+                "kind": "account",
+                "path": "note.receiver",
+                "account": "Note"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  110,
+                  99,
+                  104,
+                  111,
+                  114,
+                  95,
+                  108,
+                  97,
+                  110,
+                  103,
+                  32,
+                  58,
+                  58,
+                  32,
+                  115,
+                  111,
+                  108,
+                  97,
+                  110,
+                  97,
+                  95,
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  32,
+                  58,
+                  58,
+                  32,
+                  107,
+                  101,
+                  99,
+                  99,
+                  97,
+                  107,
+                  32,
+                  58,
+                  58,
+                  10,
+                  104,
+                  97,
+                  115,
+                  104,
+                  40,
+                  38,
+                  32,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  116,
+                  33,
+                  10,
+                  40,
+                  34,
+                  123,
+                  125,
+                  123,
+                  125,
+                  34,
+                  44,
+                  32,
+                  111,
+                  114,
+                  105,
+                  103,
+                  105,
+                  110,
+                  97,
+                  108,
+                  95,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101,
+                  44,
+                  32,
+                  111,
+                  114,
+                  105,
+                  103,
+                  105,
+                  110,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116,
+                  41
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "deleter",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "_original_title",
+          "type": "string"
+        },
+        {
+          "name": "_original_content",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "react_to_note_by_content",
+      "discriminator": [
+        51,
+        241,
+        198,
+        204,
+        98,
+        198,
+        9,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "note",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "note.author",
+                "account": "Note"
+              },
+              {
+                "kind": "account",
+                "path": "note.receiver",
+                "account": "Note"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  110,
+                  99,
+                  104,
+                  111,
+                  114,
+                  95,
+                  108,
+                  97,
+                  110,
+                  103,
+                  32,
+                  58,
+                  58,
+                  32,
+                  115,
+                  111,
+                  108,
+                  97,
+                  110,
+                  97,
+                  95,
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  32,
+                  58,
+                  58,
+                  32,
+                  107,
+                  101,
+                  99,
+                  99,
+                  97,
+                  107,
+                  32,
+                  58,
+                  58,
+                  10,
+                  104,
+                  97,
+                  115,
+                  104,
+                  40,
+                  38,
+                  32,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  116,
+                  33,
+                  10,
+                  40,
+                  34,
+                  123,
+                  125,
+                  123,
+                  125,
+                  34,
+                  44,
+                  32,
+                  111,
+                  114,
+                  105,
+                  103,
+                  105,
+                  110,
+                  97,
+                  108,
+                  95,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101,
+                  44,
+                  32,
+                  111,
+                  114,
+                  105,
+                  103,
+                  105,
+                  110,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116,
+                  41
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reaction",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  97,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "note"
+              },
+              {
+                "kind": "account",
+                "path": "reactor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reactor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_original_title",
+          "type": "string"
+        },
+        {
+          "name": "_original_content",
+          "type": "string"
+        },
+        {
+          "name": "reaction_type",
+          "type": {
+            "defined": {
+              "name": "ReactionType"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "send_note",
+      "discriminator": [
+        63,
+        25,
+        61,
+        7,
+        243,
+        250,
+        218,
+        149
+      ],
+      "accounts": [
+        {
+          "name": "note",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "author"
+              },
+              {
+                "kind": "account",
+                "path": "receiver"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  110,
+                  99,
+                  104,
+                  111,
+                  114,
+                  95,
+                  108,
+                  97,
+                  110,
+                  103,
+                  32,
+                  58,
+                  58,
+                  32,
+                  115,
+                  111,
+                  108,
+                  97,
+                  110,
+                  97,
+                  95,
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  32,
+                  58,
+                  58,
+                  32,
+                  107,
+                  101,
+                  99,
+                  99,
+                  97,
+                  107,
+                  32,
+                  58,
+                  58,
+                  10,
+                  104,
+                  97,
+                  115,
+                  104,
+                  40,
+                  38,
+                  32,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  116,
+                  33,
+                  32,
+                  40,
+                  34,
+                  123,
+                  125,
+                  123,
+                  125,
+                  34,
+                  44,
+                  32,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101,
+                  44,
+                  32,
+                  99,
+                  111,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116,
+                  41
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "receiver"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "send_note_by_content",
+      "discriminator": [
+        58,
+        3,
+        220,
+        251,
+        60,
+        54,
+        88,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "note",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "author"
+              },
+              {
+                "kind": "account",
+                "path": "receiver"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  110,
+                  99,
+                  104,
+                  111,
+                  114,
+                  95,
+                  108,
+                  97,
+                  110,
+                  103,
+                  32,
+                  58,
+                  58,
+                  32,
+                  115,
+                  111,
+                  108,
+                  97,
+                  110,
+                  97,
+                  95,
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  32,
+                  58,
+                  58,
+                  32,
+                  107,
+                  101,
+                  99,
+                  99,
+                  97,
+                  107,
+                  32,
+                  58,
+                  58,
+                  10,
+                  104,
+                  97,
+                  115,
+                  104,
+                  40,
+                  38,
+                  32,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  116,
+                  33,
+                  32,
+                  40,
+                  34,
+                  123,
+                  125,
+                  123,
+                  125,
+                  34,
+                  44,
+                  32,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101,
+                  44,
+                  32,
+                  99,
+                  111,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116,
+                  41
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "receiver"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Note",
+      "discriminator": [
+        203,
+        75,
+        252,
+        196,
+        81,
+        210,
+        122,
+        126
+      ]
+    },
+    {
+      "name": "Reaction",
+      "discriminator": [
+        226,
+        61,
+        100,
+        191,
+        223,
+        221,
+        142,
+        139
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "CannotSendToSelf",
+      "msg": "Cannot send note to yourself"
+    },
+    {
+      "code": 6001,
+      "name": "TitleTooLong",
+      "msg": "Title is too long (max 50 characters)"
+    },
+    {
+      "code": 6002,
+      "name": "ContentTooLong",
+      "msg": "Content is too long (max 300 characters)"
+    },
+    {
+      "code": 6003,
+      "name": "DuplicateMessage",
+      "msg": "Duplicate message - note already exists"
+    },
+    {
+      "code": 6004,
+      "name": "NotAuthorized",
+      "msg": "Not authorized to perform this action"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidReactionType",
+      "msg": "Invalid reaction type"
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "note_count",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Note",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "author",
+            "type": "pubkey"
+          },
+          {
+            "name": "receiver",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "content",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "likes",
+            "type": "u64"
+          },
+          {
+            "name": "dislikes",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Reaction",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "reactor",
+            "type": "pubkey"
+          },
+          {
+            "name": "note",
+            "type": "pubkey"
+          },
+          {
+            "name": "reaction_type",
+            "type": {
+              "defined": {
+                "name": "ReactionType"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReactionType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Like"
+          },
+          {
+            "name": "Dislike"
+          }
+        ]
+      }
+    }
+  ]
+}
