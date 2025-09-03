@@ -54,8 +54,6 @@ pub mod tellit {
         note.title = title;
         note.content = content;
         note.bump = ctx.bumps.note;
-        note.likes = 0;
-        note.dislikes = 0;
         note.created_at = current_time;
         note.updated_at = current_time;
 
@@ -65,55 +63,9 @@ pub mod tellit {
     
     // Edit note functionality removed - keeping app simple
 
-    pub fn delete_note_by_content(
-        ctx: Context<DeleteNoteByContent>,
-        _original_title: String,
-        _original_content: String,
-    ) -> Result<()> {
-        let deleter = ctx.accounts.deleter.key();
-        let note = &ctx.accounts.note;
-        let config = &mut ctx.accounts.config;
 
-        require!(
-            deleter == note.author || deleter == note.receiver,
-            TellitError::NotAuthorized
-        );
 
-        config.note_count = config.note_count.saturating_sub(1);
-        Ok(())
-    }
 
-    pub fn react_to_note_by_content(
-        ctx: Context<ReactToNoteByContent>,
-        _original_title: String,
-        _original_content: String,
-        reaction_type: ReactionType,
-    ) -> Result<()> {
-        let note = &mut ctx.accounts.note;
-        let reaction = &mut ctx.accounts.reaction;
-        let reactor = ctx.accounts.reactor.key();
-
-        // Add new reaction
-        match reaction_type {
-            ReactionType::Like => {
-                note.likes = note.likes.saturating_add(1);
-            }
-            ReactionType::Dislike => {
-                note.dislikes = note.dislikes.saturating_add(1);
-            }
-            ReactionType::None => {
-                // No reaction - this shouldn't happen in normal flow
-                return Err(TellitError::InvalidReactionType.into());
-            }
-        }
-
-        reaction.note = note.key();
-        reaction.reactor = reactor;
-        reaction.reaction_type = reaction_type;
-        reaction.bump = ctx.bumps.reaction;
-
-        Ok(())
-    }
 }
 
 #[derive(Accounts)]
@@ -147,26 +99,11 @@ pub struct Note {
     pub title: String,
     pub content: String,
     pub bump: u8,
-    pub likes: u64,
-    pub dislikes: u64,
     pub created_at: i64,
     pub updated_at: i64,
 }
 
-#[account]
-pub struct Reaction {
-    pub reactor: Pubkey,
-    pub note: Pubkey,
-    pub reaction_type: ReactionType,
-    pub bump: u8,
-}
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum ReactionType {
-    None,
-    Like,
-    Dislike,
-}
 
 // New backend-only structs that handle PDA generation internally
 #[derive(Accounts)]
@@ -176,7 +113,7 @@ pub struct SendNoteByContent<'info> {
     #[account(
         init,
         payer = author,
-        space = 8 + 32 + 32 + 4 + 50 + 4 + 300 + 1 + 8 + 8 + 8 + 8,
+        space = 8 + 32 + 32 + 4 + 50 + 4 + 300 + 1 + 8 + 8,
         seeds = [b"note", author.key().as_ref(), receiver.key().as_ref(), &anchor_lang::solana_program::keccak::hash(&format!("{}{}", title, content).as_bytes()).to_bytes()],
         bump
     )]
@@ -191,38 +128,9 @@ pub struct SendNoteByContent<'info> {
 }
 // EditNoteByContent struct removed - keeping app simple
 
-#[derive(Accounts)]
-#[instruction(original_title: String, original_content: String)]
-pub struct DeleteNoteByContent<'info> {
-    #[account(
-        mut,
-        close = deleter,
-        constraint = deleter.key() == note.author || deleter.key() == note.receiver @ TellitError::NotAuthorized,
-        seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &anchor_lang::solana_program::keccak::hash(&format!("{}{}", original_title, original_content).as_bytes()).to_bytes()],
-        bump = note.bump
-    )]
-    pub note: Account<'info, Note>,
-    #[account(mut, seeds = [b"config"], bump = config.bump)]
-    pub config: Account<'info, Config>,
-    #[account(mut)]
-    pub deleter: Signer<'info>,
-}
 
-#[derive(Accounts)]
-#[instruction(original_title: String, original_content: String)]
-pub struct ReactToNoteByContent<'info> {
-    #[account(
-        mut,
-        seeds = [b"note", note.author.as_ref(), note.receiver.as_ref(), &anchor_lang::solana_program::keccak::hash(&format!("{}{}", original_title, original_content).as_bytes()).to_bytes()],
-        bump = note.bump
-    )]
-    pub note: Account<'info, Note>,
-    #[account(init, payer = reactor, space = 8 + 32 + 32 + 1 + 1, seeds = [b"reaction", note.key().as_ref(), reactor.key().as_ref()], bump)]
-    pub reaction: Account<'info, Reaction>,
-    #[account(mut)]
-    pub reactor: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
+
+
 
 #[error_code]
 pub enum TellitError {
@@ -237,6 +145,4 @@ pub enum TellitError {
 
     #[msg("Not authorized to perform this action")]
     NotAuthorized,
-    #[msg("Invalid reaction type")]
-    InvalidReactionType,
 }
